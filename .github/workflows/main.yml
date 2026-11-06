@@ -3,15 +3,18 @@ name: "*** build ipa/tipa file ***"
 on:
   push:
     branches:
-      - '*'
+      - 'neo-mod'
     paths-ignore:
       - ".gitignore"
   pull_request:
     branches:
-      - '*'
+      - 'neo-mod'
     paths-ignore:
       - ".gitignore"
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -19,7 +22,7 @@ concurrency:
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: macos-15
     steps:
       - name: Xcode Setup
         uses: maxim-lobanov/setup-xcode@v1
@@ -27,10 +30,9 @@ jobs:
           xcode-version: latest-stable
 
       - name: Checkout
-        uses: actions/checkout@main
+        uses: actions/checkout@v4
         with:
-            repository: roothide/Dopamine-roothide
-            submodules: recursive
+          submodules: recursive
 
       - name: Install Procursus
         uses: dhinakg/procursus-action@main
@@ -97,17 +99,28 @@ jobs:
 
       - name: Upload Artifact
         id: dopamine-latest-upload
-        uses: actions/upload-artifact@main
+        uses: actions/upload-artifact@v4
         with:
-          name: Dopamine
+          name: Dopamine-roothide-ipa-${{ env.shorthash }}
           path: |
             ${{ github.workspace }}/Application/roothide-Dopamine-${{ env.version }}.ipa
-          archive: false
 
-      - name: Upload Artifact(TIPA)
+      - name: Upload Artifact (TIPA)
         id: dopamine-latest-upload-tipa
-        uses: actions/upload-artifact@main
+        uses: actions/upload-artifact@v4
         with:
+          name: Dopamine-roothide-tipa-${{ env.shorthash }}
           path: |
             ${{ github.workspace }}/Application/roothide-Dopamine-${{ env.version }}.tipa
-          archive: false
+
+      - name: Publish neo-mod Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/neo-mod'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: neo-mod-${{ env.ctime }}-${{ env.shorthash }}
+          name: Dopamine roothide neo-mod ${{ env.ctime }}
+          prerelease: false
+          make_latest: true
+          files: |
+            ${{ github.workspace }}/Application/roothide-Dopamine-${{ env.version }}.ipa
+            ${{ github.workspace }}/Application/roothide-Dopamine-${{ env.version }}.tipa

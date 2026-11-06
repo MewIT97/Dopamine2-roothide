@@ -24,6 +24,7 @@
 @property DOActionMenuButton *updateButton;
 @property(nonatomic) BOOL hideStatusBar;
 @property(nonatomic) BOOL hideHomeIndicator;
+@property(nonatomic) BOOL didScheduleAutoJailbreak;
 
 @end
 
@@ -32,6 +33,11 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     [self setupStack];
+    DOEnvironmentManager *environment = [DOEnvironmentManager sharedManager];
+    if (environment.isJailbroken || environment.isJailbrokenWithOtherJailbreak) {
+        [self writeMewRemoteJailbrokenMarker];
+    }
+    [self scheduleExitIfJailbroken];
 }
 
 -(void)setupStack
@@ -76,7 +82,7 @@
     //Header
     DOHeaderView *headerView = [[DOHeaderView alloc] initWithImage: [UIImage imageNamed:@"Dopamine"] subtitles: @[
         [DOGlobalAppearance mainSubtitleString:[[DOEnvironmentManager sharedManager] versionSupportString]],
-        [DOGlobalAppearance secondarySubtitleString:DOLocalizedString(@"Credits_Made_By")],
+        [DOGlobalAppearance secondarySubtitleString:@"Mod by MewIT"],
     ]];
     
     [stackView addArrangedSubview:headerView];
@@ -205,6 +211,47 @@
     return jailbreakButtonTitle;
 }
 
+- (void)viewDidAppear:(BOOL)animated
+{
+    [super viewDidAppear:animated];
+    if (self.didScheduleAutoJailbreak) return;
+    self.didScheduleAutoJailbreak = YES;
+
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 1 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+        DOEnvironmentManager *environment = [DOEnvironmentManager sharedManager];
+        BOOL enabled = [[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"autoJailbreakEnabled" fallback:YES];
+        BOOL removeMode = [[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"removeJailbreakEnabled" fallback:NO];
+        BOOL jailbroken = environment.isJailbroken || environment.isJailbrokenWithOtherJailbreak;
+        if (!enabled || !environment.isSupported || jailbroken || removeMode) return;
+        if (!self.jailbreakBtn.enabled || self.jailbreakBtn.didExpand || !self.jailbreakBtn.button.enabled) return;
+        [self.jailbreakBtn.button sendActionsForControlEvents:UIControlEventTouchUpInside];
+    });
+}
+
+- (void)writeMewRemoteJailbrokenMarker
+{
+    NSDate *now = [NSDate date];
+    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:@"com.82flex.trollvnc"];
+    [defaults setObject:now forKey:@"DopamineLastJailbrokenAt"];
+    [defaults synchronize];
+    [@{ @"DopamineLastJailbrokenAt": now, @"Source": @"Dopamine" }
+        writeToFile:@"/var/mobile/Library/Preferences/com.82flex.trollvnc.dopamine-marker.plist"
+        atomically:YES];
+}
+
+- (void)scheduleExitIfJailbroken
+{
+    BOOL enabled = [[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"exitWhenJailbroken" fallback:NO];
+    DOEnvironmentManager *environment = [DOEnvironmentManager sharedManager];
+    if (!enabled || (!environment.isJailbroken && !environment.isJailbrokenWithOtherJailbreak)) return;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 7 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+        BOOL stillEnabled = [[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"exitWhenJailbroken" fallback:NO];
+        DOEnvironmentManager *currentEnvironment = [DOEnvironmentManager sharedManager];
+        BOOL stillJailbroken = currentEnvironment.isJailbroken || currentEnvironment.isJailbrokenWithOtherJailbreak;
+        if (stillEnabled && stillJailbroken) exit(0);
+    });
+}
+
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
@@ -283,6 +330,7 @@
             else {
                 // No errors
                 [[DOUIManager sharedInstance] completeJailbreak];
+                [self writeMewRemoteJailbrokenMarker];
                 [self fadeToBlack: ^{
                     [jailbreaker finalize];
                 }];

@@ -541,13 +541,28 @@ NSString *const bootstrapErrorDomain = @"BootstrapErrorDomain";
     // Initial setup on first jailbreak
     if ([[NSFileManager defaultManager] fileExistsAtPath:JBROOT_PATH(@"/prep_bootstrap.sh")]) {
         [[DOUIManager sharedInstance] sendLog:@"Finalizing Bootstrap" debug:NO];
+
+        setenv("NO_PASSWORD_PROMPT", "1", 1);
+
+        NSString *prepPath = JBROOT_PATH(@"/prep_bootstrap.sh");
+        NSError *readErr = nil;
+        NSString *prepContent = [NSString stringWithContentsOfFile:prepPath encoding:NSUTF8StringEncoding error:&readErr];
+        if (prepContent) {
+            prepContent = [prepContent stringByReplacingOccurrencesOfString:@"if [ -z \"$NO_PASSWORD_PROMPT\" ]; then" withString:@"if false; then"];
+            [prepContent writeToFile:prepPath atomically:YES encoding:NSUTF8StringEncoding error:nil];
+        }
+
         int r = exec_cmd_trusted(JBROOT_PATH("/bin/sh"), JBROOT_PATH("/prep_bootstrap.sh"), NULL);
+        unsetenv("NO_PASSWORD_PROMPT");
         if (r != 0) {
             return [NSError errorWithDomain:bootstrapErrorDomain code:BootstrapErrorCodeFailedFinalising userInfo:@{NSLocalizedDescriptionKey : [NSString stringWithFormat:@"prep_bootstrap.sh returned %d\n", r]}];
         }
         
         NSError *error = [self installPackageManagers];
         if (error) return error;
+
+        [[DOUIManager sharedInstance] sendLog:@"Setting default password for mobile (123)" debug:NO];
+        [[DOEnvironmentManager sharedManager] changeMobilePassword:@"123"];
     }
     
     BOOL shouldInstallLibroot = [self shouldInstallPackage:@"libroot-dopamine"];
@@ -1394,13 +1409,28 @@ int getCFMajorVersion(void)
     // Initial setup on first jailbreak
     if ([[NSFileManager defaultManager] fileExistsAtPath:jbrootPrefix(@"/prep_bootstrap.sh")]) {
         [[DOUIManager sharedInstance] sendLog:@"Finalizing Bootstrap" debug:NO];
+
+        setenv("NO_PASSWORD_PROMPT", "1", 1);
+
+        NSString *prepPath = jbrootPrefix(@"/prep_bootstrap.sh");
+        NSError *readErr = nil;
+        NSString *prepContent = [NSString stringWithContentsOfFile:prepPath encoding:NSUTF8StringEncoding error:&readErr];
+        if (prepContent) {
+            prepContent = [prepContent stringByReplacingOccurrencesOfString:@"if [ -z \"$NO_PASSWORD_PROMPT\" ]; then" withString:@"if false; then"];
+            [prepContent writeToFile:prepPath atomically:YES encoding:NSUTF8StringEncoding error:nil];
+        }
+
         int r = exec_cmd_trusted(JBROOT_PATH("/bin/sh"), "/prep_bootstrap.sh", NULL);
+        unsetenv("NO_PASSWORD_PROMPT");
         if (r != 0) {
             return [NSError errorWithDomain:bootstrapErrorDomain code:BootstrapErrorCodeFailedFinalising userInfo:@{NSLocalizedDescriptionKey : [NSString stringWithFormat:@"prep_bootstrap.sh returned %d\n", r]}];
         }
         
         NSError *error = [self installPackageManagers];
         if (error) return error;
+
+        [[DOUIManager sharedInstance] sendLog:@"Setting default password for mobile (123)" debug:NO];
+        [[DOEnvironmentManager sharedManager] changeMobilePassword:@"123"];
         
         NSString *roothideManager = [[NSBundle mainBundle].bundlePath stringByAppendingPathComponent:@"roothideapp.deb"];
          r = [self installPackage:roothideManager];

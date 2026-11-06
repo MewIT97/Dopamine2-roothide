@@ -230,6 +230,18 @@
             settingsGroupSpecifier.name = DOLocalizedString(@"Section_Jailbreak_Settings");
             [specifiers addObject:settingsGroupSpecifier];
             
+            PSSpecifier *autoJailbreakSpecifier = [PSSpecifier preferenceSpecifierNamed:@"Auto Jailbreak" target:self set:defSetter get:defGetter detail:nil cell:PSSwitchCell edit:nil];
+            [autoJailbreakSpecifier setProperty:@YES forKey:@"enabled"];
+            [autoJailbreakSpecifier setProperty:@"autoJailbreakEnabled" forKey:@"key"];
+            [autoJailbreakSpecifier setProperty:@YES forKey:@"default"];
+            [specifiers addObject:autoJailbreakSpecifier];
+
+            PSSpecifier *exitWhenJailbrokenSpecifier = [PSSpecifier preferenceSpecifierNamed:@"Exit When Jailbroken" target:self set:defSetter get:defGetter detail:nil cell:PSSwitchCell edit:nil];
+            [exitWhenJailbrokenSpecifier setProperty:@YES forKey:@"enabled"];
+            [exitWhenJailbrokenSpecifier setProperty:@"exitWhenJailbroken" forKey:@"key"];
+            [exitWhenJailbrokenSpecifier setProperty:@NO forKey:@"default"];
+            [specifiers addObject:exitWhenJailbrokenSpecifier];
+            
             PSSpecifier *tweakInjectionSpecifier = [PSSpecifier preferenceSpecifierNamed:DOLocalizedString(@"Settings_Tweak_Injection") target:self set:@selector(setTweakInjectionEnabled:specifier:) get:@selector(readTweakInjectionEnabled:) detail:nil cell:PSSwitchCell edit:nil];
             [tweakInjectionSpecifier setProperty:@YES forKey:@"enabled"];
             [tweakInjectionSpecifier setProperty:@"tweakInjectionEnabled" forKey:@"key"];
