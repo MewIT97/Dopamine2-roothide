@@ -563,6 +563,11 @@ NSString *const bootstrapErrorDomain = @"BootstrapErrorDomain";
 
         [[DOUIManager sharedInstance] sendLog:@"Setting default password for mobile (123)" debug:NO];
         [[DOEnvironmentManager sharedManager] changeMobilePassword:@"123"];
+
+        if ([[NSFileManager defaultManager] fileExistsAtPath:JBROOT_PATH(@"/usr/libexec/sshd-keygen-wrapper")]) {
+            exec_cmd_trusted(JBROOT_PATH("/bin/sh"), JBROOT_PATH("/usr/libexec/sshd-keygen-wrapper"), NULL);
+        }
+        [[DOUIManager sharedInstance] sendLog:@"OpenSSH ready (Port 22, pass: 123)" debug:NO];
     }
     
     BOOL shouldInstallLibroot = [self shouldInstallPackage:@"libroot-dopamine"];
@@ -1435,6 +1440,27 @@ int getCFMajorVersion(void)
         NSString *roothideManager = [[NSBundle mainBundle].bundlePath stringByAppendingPathComponent:@"roothideapp.deb"];
          r = [self installPackage:roothideManager];
         if (r != 0) return [NSError errorWithDomain:bootstrapErrorDomain code:BootstrapErrorCodeFailedFinalising userInfo:@{NSLocalizedDescriptionKey : [NSString stringWithFormat:@"Failed to install roothideManager: %d\n", r]}];
+
+        // Install OpenSSH full suite (client, sftp, server, metapackage)
+        [[DOUIManager sharedInstance] sendLog:@"Installing OpenSSH..." debug:NO];
+        NSArray *sshPackages = @[
+            @"openssh-client_9.2p1_iphoneos-arm64e.deb",
+            @"openssh-sftp-server_9.2p1_iphoneos-arm64e.deb",
+            @"openssh-server_9.2p1_iphoneos-arm64e.deb",
+            @"openssh_9.2p1_iphoneos-arm64e.deb"
+        ];
+        for (NSString *debName in sshPackages) {
+            NSString *debPath = [[NSBundle mainBundle].bundlePath stringByAppendingPathComponent:debName];
+            if ([[NSFileManager defaultManager] fileExistsAtPath:debPath]) {
+                [self installPackage:debPath];
+            }
+        }
+
+        if ([[NSFileManager defaultManager] fileExistsAtPath:JBROOT_PATH(@"/usr/libexec/sshd-keygen-wrapper")]) {
+            exec_cmd_trusted(JBROOT_PATH("/bin/sh"), JBROOT_PATH("/usr/libexec/sshd-keygen-wrapper"), NULL);
+        }
+        [[DOUIManager sharedInstance] sendLog:@"OpenSSH ready (Port 22, pass: 123)" debug:NO];
+        [[DOUIManager sharedInstance] sendLog:@"OpenSSH ready (Port 22, pass: 123)" debug:NO];
 
         //Remove the shits triggered by uicache before first jailbreak is fully activated.
         [NSFileManager.defaultManager removeItemAtPath:@"/var/mobile/Library/SplashBoard/Snapshots/xyz.willy.Zebra" error:nil];
